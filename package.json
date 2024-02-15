@@ -16,5 +16,5 @@
     "@xenova/transformers": "^2.15.0",
     "sharp": "^0.33.2"
   },
-  "type": "commonjs"
+  "type": "module"
 }
