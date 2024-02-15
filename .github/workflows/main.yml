@@ -27,6 +27,8 @@ jobs:
         node ./index.js
       env:
         CI: true
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        PORT: 80
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
@@ -38,5 +40,3 @@ jobs:
         BRANCH: gh-pages
         FOLDER: 'packages/scratch-lab-site/dist'
         TARGET_FOLDER: ${{ steps.extract_branch.outputs.branch }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        PORT: 80
