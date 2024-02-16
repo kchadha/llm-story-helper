@@ -12,7 +12,9 @@ server.use(restify.plugins.queryParser());
 server.use(
   function crossOrigin(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
     res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    res.header("Access-Control-Allow-Methods", "OPTIONS, DELETE, POST, GET, PATCH, PUT");
     return next();
   }
 );
@@ -32,7 +34,7 @@ const getImage = async (prompt, query) => {
       response_format: 'b64_json'
   })
   .then(resp => {
-    debugger;
+    console.log("Got generated image");
     return `data:image/webp;base64,${resp.data[0].b64_json}`;
   })
   .catch(error => {
@@ -102,7 +104,10 @@ server.get('/', function(req, res, next) {
           const end = Date.now();
           const timeElapsed = end - start;
 
-          await new Promise(r => setTimeout(r, 60000-timeElapsed));
+          const timeDelay = 60000 - timeElapsed;
+          console.log("Adding time delay of ", timeDelay);
+
+          await new Promise(r => setTimeout(r, timeDelay));
           
           return getImage(prompt, req.query);
             // .then(removeBackground)
@@ -120,6 +125,9 @@ server.get('/', function(req, res, next) {
           res.contentType = 'json';
           const responseObj = {prompts: imagePrompts, images, plainPromptImages};
           // console.log("Response Obj: ", responseObj);
+
+          console.log("Sending response");
+
           res.send(responseObj);
           return next();
         })
