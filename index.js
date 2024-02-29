@@ -87,11 +87,13 @@ server.get('/images', function(req, res, next) {
 // });
 
 server.get('/', function(req, res, next) {
-    console.log("GET /");
     if (!req.query.prompt) {
+      console.log("Ping /");
       res.end();
       return next();
     }
+
+    console.log("GET /");
 
     const agent = new Agent('Subject Diversifier', prompts.diversify7, /*msgObj.subjects*/ req.query.prompt);
     const setup = agent.initialize();
@@ -143,9 +145,12 @@ server.get('/', function(req, res, next) {
           res.send(responseObj);
           return next();
         })
+        .catch(e => {
+          console.log("Got an error in the image gen process... ", e);
+        })
       );
     } catch (e) {
-      console.log("Got an error somewhere in the process: ", e);
+      console.log("Got an error somewhere in the request handling process: ", e);
     }
 });
 
