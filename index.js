@@ -6,7 +6,15 @@ import restify from 'restify';
 
 const openai = new OpenAI();
 
-const server = restify.createServer();
+const certKeyPath = process.env.CERT_KEY_PATH || '';
+const certPath = process.env.CERT_PATH || '';
+
+const options = {
+  key: certKeyPath && fs.readFileSync(certKeyPath),
+  cert: certPath && fs.readFileSync(certPath)
+};
+
+const server = restify.createServer(certKeyPath && {...options});
 server.use(restify.plugins.queryParser());
 
 server.use(
