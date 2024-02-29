@@ -3,6 +3,7 @@ import prompts from './prompts.js';
 import Agent from './agentCreator.js'
 import removeBackground from './removeBackground.js';
 import restify from 'restify';
+import fs from 'fs';
 
 const openai = new OpenAI();
 
