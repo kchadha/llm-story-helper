@@ -107,15 +107,18 @@ server.get('/', function(req, res, next) {
     try {
       return setup
       .then(() => agent.stepPromise)
-      .then(v => v.variants)
-      .then(imagePrompts => Promise.all(imagePrompts.map(async prompt => {
+      .then(async (v) => {
           const end = Date.now();
           const timeElapsed = end - start;
 
           const timeDelay = 60000 - timeElapsed;
           console.log("Adding time delay of ", timeDelay);
 
-          await new Promise(r => setTimeout(r, timeDelay));
+        await new Promise((r) => setTimeout(r, timeDelay));
+        return v;
+      })
+      .then(v => v.variants)
+      .then(imagePrompts => Promise.all(imagePrompts.map(async prompt => {
           
           return getImage(prompt, req.query);
             // .then(removeBackground)
