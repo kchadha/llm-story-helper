@@ -38,8 +38,6 @@ const getImage = async (prompt, query) => {
       prompt: p,
       n: 1,
       size: size,
-      // size: '512x512',
-      // size: '256x256',
       response_format: 'b64_json'
   })
   .then(resp => {
@@ -58,12 +56,15 @@ const getImage = async (prompt, query) => {
 
 
 
-server.get('/images', function(req, res, next) {
-  console.log("Got a GET /images");
+server.get('/image', function(req, res, next) {
   if (!req.query.prompt) {
+    console.log('Ping /image');
     res.end();
     return next();
   }
+
+  console.log("Got a GET /image");
+
   getImage(req.query.prompt, req.query).then(image => {
     res.contentType = 'json';
     res.send(image);
@@ -71,16 +72,40 @@ server.get('/images', function(req, res, next) {
   });
 });
 
-// server.get('/removebg', function(req, res, next) {
+server.get('/plain_images', function(req, res, next) {
+  if (!req.query.prompt) {
+    console.log('Ping /plain_images');
+    res.end();
+    return next();
+  }
+
+  console.log("Got a GET /plain_images");
+
+  const imagePromises = [];
+  for (let i = 0; i < (req.query.num || 1); i++) {
+      imagePromises.push(
+        getImage(req.query.prompt, req.query)
+      );
+  }
+
+  Promise.all(imagePromises).then(images => {
+    res.contentType = 'json';
+    res.send({images});
+    return next();
+  });
+});
+
+// server.post('/removebg', function(req, res, next) {
 //   console.log('GET /removebg');
-//   if (!req.body.image) {
+//   if (!req.body) {
 //     res.end();
 //     return next();
 //   }
 //   (async () => {
-//     await removeBackground(req.body.image).then(newImg => {
+//     const image = JSON.parse(req.body).image;
+//     removeBackground(image).then(newImg => {
 //       res.contentType = 'json';
-//       res.send(newImg);
+//       res.send({image: newImg});
 //       return next();
 //     });
 //   })();
@@ -111,11 +136,11 @@ server.get('/', function(req, res, next) {
       return setup
       .then(() => agent.stepPromise)
       .then(async (v) => {
-          const end = Date.now();
-          const timeElapsed = end - start;
+        const end = Date.now();
+        const timeElapsed = end - start;
 
-          const timeDelay = 60000 - timeElapsed;
-          console.log("Adding time delay of ", timeDelay);
+        const timeDelay = 60000 - timeElapsed;
+        console.log("Adding time delay of ", timeDelay);
 
         await new Promise((r) => setTimeout(r, timeDelay));
         return v;
