@@ -138,6 +138,15 @@ server.get('/prompt_variants', function(req, res, next){
 
       res.send(responseObj);
       return next();
+    })
+    .else(() => { // Got an error, chatGPT did not give JSON, fail gracefully
+      res.contentType = 'json';
+      const responseObj = {
+        prompts: [req.query.prompt, req.query.prompt, req.query.prompt, req.query.prompt],
+        threadId
+      };
+      res.send(responseObj);
+      return next();
     });
   })();
 });
