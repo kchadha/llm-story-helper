@@ -2,10 +2,8 @@ import OpenAI from 'openai';
 import prompts from './prompts.js';
 import Agent from './agentCreator.js'
 import removeBackground from './removeBackground.js';
-import express from 'express';
-import https from 'https';
-import http from 'http';
-import cors from 'cors'
+import restify from 'restify';
+import corsMiddleware from 'restify-cors-middleware'
 import fs from 'fs';
 
 const delay = ms => new Promise(res => {
@@ -15,28 +13,30 @@ const delay = ms => new Promise(res => {
 
 const openai = new OpenAI();
 
+const certKeyPath = process.env.CERT_KEY_PATH || '';
+const certPath = process.env.CERT_PATH || '';
+
+const options = {
+  key: certKeyPath && fs.readFileSync(certKeyPath),
+  cert: certPath && fs.readFileSync(certPath)
+};
+
 const agent = new Agent('Subject Diversifier', prompts.diversify8, /*req.query.prompt*/);
 agent.setupAssistant();
 
-// const server = certKeyPath ? restify.createServer({...options}) : restify.createServer();
-// const server = certKeyPath ? express({...options}) : express();
-const server = express();
-server.use(cors());
-server.use(express.json({limit: '1gb'}));
+const server = certKeyPath ? restify.createServer({...options}) : restify.createServer();
+server.use(restify.plugins.queryParser());
 
-// if (certKeyPath) https.createServer(options);
-// server.use(restify.plugins.queryParser());
-
-// const cors = corsMiddleware({
-//   preflightMaxAge: 5, //Optional
-//   origins: ['*'],
-//   allowHeaders: ['Origin',  'Accept',  'Accept-Version',  'Content-Length', 'Content-Type',  'Date',  'X-Requested-With', 'X-Response-Time', 'Authorization'], 
-//   exposeHeaders: [],
-//   // allowMethods: ['OPTIONS', 'DELETE', 'POST']
-// })
+const cors = corsMiddleware({
+  preflightMaxAge: 5, //Optional
+  origins: ['*'],
+  allowHeaders: ['Origin',  'Accept',  'Accept-Version',  'Content-Length', 'Content-Type',  'Date',  'X-Requested-With', 'X-Response-Time', 'Authorization'], 
+  exposeHeaders: [],
+  // allowMethods: ['OPTIONS', 'DELETE', 'POST']
+})
  
-// server.pre(cors.preflight)
-// server.use(cors.actual)
+server.pre(cors.preflight)
+server.use(cors.actual)
 
 // server.use(
 //   function crossOrigin(req, res, next) {
@@ -81,6 +81,28 @@ const getImage = async (prompt, query) => {
       return {b64_json: '', revised_prompt: 'invalid image'};
   });
 };
+
+// .then(response => {
+//   return removeBackground(response.data[0].b64_json);
+// })
+
+
+
+// server.get('/image', function(req, res, next) {
+//   if (!req.query.prompt) {
+//     console.log('Ping /image');
+//     res.end();
+//     return next();
+//   }
+
+//   console.log("Got a GET /image");
+
+//   getImage(req.query.prompt, req.query).then(image => {
+//     res.contentType = 'json';
+//     res.send(image);
+//     return next();
+//   });
+// });
 
 server.get('/images', function(req, res, next) {
   if (!req.query.prompt) {
@@ -144,17 +166,14 @@ server.get('/prompt_variants', function(req, res, next){
 
 const removeBg = function (method, req, res, next) {
   console.log('Ping /removebg');
-  // console.log(req);
   if (!req.body) {
     console.log('No req body found');
     res.end();
     return next();
   }
   console.log(`${method} /removebg`);
-  console.log(req.body);
   (async () => {
-    // const image = JSON.parse(req.body).image;
-    const image = req.body.image.split(',')[1];
+    const image = JSON.parse(req.body).image;
     removeBackground(image).then(newImg => {
       res.contentType = 'json';
       res.send({image: newImg});
@@ -166,6 +185,24 @@ const removeBg = function (method, req, res, next) {
 server.post('/removebg', (req, res, next) => removeBg('POST', req, res, next));
 server.put('/removebg', (req, res, next) => removeBg('PUT', req, res, next));
 
+// server.post('/removebg', function(req, res, next) {
+//   console.log('Ping /removebg');
+//   if (!req.body) {
+//     console.log('No req body found');
+//     res.end();
+//     return next();
+//   }
+//   console.log('POST /removebg');
+//   (async () => {
+//     const image = JSON.parse(req.body).image;
+//     removeBackground(image).then(newImg => {
+//       res.contentType = 'json';
+//       res.send({image: newImg});
+//       return next();
+//     });
+//   })();
+// });
+
 server.get('/', function(req, res, next) {
     if (!req.query.prompt) {
       console.log("Ping /");
@@ -174,6 +211,9 @@ server.get('/', function(req, res, next) {
     }
 
     console.log("GET /");
+
+    // const agent = new Agent('Subject Diversifier', prompts.diversify7, /*msgObj.subjects*/ req.query.prompt);
+    // const setup = agent.initialize();
 
     const plainPromptImages = [];
     const start = Date.now();
@@ -203,6 +243,15 @@ server.get('/', function(req, res, next) {
         .then(imagePrompts => Promise.all(imagePrompts.map(async prompt => {
             
             return getImage(prompt, req.query);
+              // .then(removeBackground)
+              // .catch(e => {
+              //   console.log("Error removing background: ", e);
+              //   return '';
+              // });
+              // .then(i => {
+              //   debugger;
+              //   return removeBackground(i);
+              // });
           }))
           .then(images => {
             console.log("Got images!");
@@ -225,22 +274,7 @@ server.get('/', function(req, res, next) {
     })();
 });
 
-const port = process.env.PORT || 8033;
-
-const certKeyPath = process.env.CERT_KEY_PATH || '';
-const certPath = process.env.CERT_PATH || '';
-
-const options = {
-  key: certKeyPath && fs.readFileSync(certKeyPath),
-  cert: certPath && fs.readFileSync(certPath)
-};
-
-if (certKeyPath) {
-  https.createServer(options, server).listen(port, function () {
-    console.log('Server listening on port ' + port);
-  });
-} else {
-  http.createServer(options, server).listen(port, function () {
-    console.log('Server listening on port ' + port);
-  });
-}
+var port = process.env.PORT || 8033;
+server.listen(port, function() {
+  console.log('Server listening on port ' + port);
+});

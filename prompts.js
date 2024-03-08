@@ -107,5 +107,17 @@ export default {
 
     Stay away from stereotypes. Treat each of the descriptors as separate unrelated attributes.
     
-    Generate these variants as structured JSON data of a single key: 'variants' and the value of that key being an array of these string variants. DO NOT number the list of variants. Make sure all keys in the JSON object are lower case. Don't include any other text besides the full json object.`
+    Generate these variants as structured JSON data of a single key: 'variants' and the value of that key being an array of these string variants. DO NOT number the list of variants. Make sure all keys in the JSON object are lower case. Don't include any other text besides the full json object.`,
+
+    diversify8: `For the given description of a subject, generate a list of exactly 4 different vividly detailed descriptions of 
+    variants for that subject. These variants should be just one short sentence. Some descriptors to vary could be ethnicity, nationality, body type, disability markers, neurodiversity, hair color, hair style,
+    type of clothing / fashion aesthetic, age, personality. 
+    
+    The goal here is to help the user come up with a short description for a visual story.
+    
+    You want to help the user choose from rich and diverse options for the subject, but ultimately they will choose a description that feels right to them for their story.
+
+    Stay away from stereotypes. Treat each of the descriptors as separate unrelated attributes.
+    
+    Generate these variants as structured JSON data of a single key: 'variants' and the value of that key being an array of these string variants. DO NOT number the list of variants. Make sure all keys in the JSON object are lower case. Don't include any other text besides the full json object.`,
 };
