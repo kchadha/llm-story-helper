@@ -144,14 +144,15 @@ server.get('/prompt_variants', function(req, res, next){
 
 const removeBg = function (method, req, res, next) {
   console.log('Ping /removebg');
-  // console.log(req);
+  
   if (!req.body) {
     console.log('No req body found');
     res.end();
     return next();
   }
+  
   console.log(`${method} /removebg`);
-  console.log(req.body);
+  
   (async () => {
     // const image = JSON.parse(req.body).image;
     const image = req.body.image.split(',')[1];
