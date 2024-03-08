@@ -129,22 +129,24 @@ server.get('/prompt_variants', function(req, res, next){
     const runId = await agent.newPrompt(threadId, req.query.prompt);
     
     agent.loopStep(threadId, runId)
-    .then(v => {
+    .then((v, rejected) => {
+
+      if (rejected) { // Got an error, chatGPT did not give JSON, fail gracefully
+        res.contentType = 'json';
+        const responseObj = {
+          prompts: [req.query.prompt, req.query.prompt, req.query.prompt, req.query.prompt],
+          threadId
+        };
+        res.send(responseObj);
+        return next();
+      }
+
       res.contentType = 'json';
       console.log("V: ", v);
       const responseObj = {prompts: v.variants, threadId};
       
       console.log("Sending response");
 
-      res.send(responseObj);
-      return next();
-    })
-    .else(() => { // Got an error, chatGPT did not give JSON, fail gracefully
-      res.contentType = 'json';
-      const responseObj = {
-        prompts: [req.query.prompt, req.query.prompt, req.query.prompt, req.query.prompt],
-        threadId
-      };
       res.send(responseObj);
       return next();
     });
