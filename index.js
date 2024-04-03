@@ -7,6 +7,58 @@ import https from 'https';
 import http from 'http';
 import cors from 'cors'
 import fs from 'fs';
+import { initializeApp } from "firebase/app";
+import { getDownloadURL, getStorage, ref, updateMetadata, uploadString } from "firebase/storage";
+import uid from './uid.js';
+
+// import sampleImages from './sampleImages.js';
+// const sampleImage = sampleImages[0];
+
+
+const systemPromptKey = 'diversify10';
+const systemPrompt = prompts[systemPromptKey];
+
+const firebaseAPIKey = process.env.FIREBASE_API_KEY || '';
+const firebaseAuthDomain = process.env.FIREBASE_AUTH_DOMAIN || '';
+const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || '';
+const firebaseStorageBucket = process.env.FIREBASE_STORAGE_BUCKET || '';
+const firebaseMessagingSenderId = process.env.FIREBASE_MESSAGING_SENDER_ID || '';
+const firebaseAppId = process.env.FIREBASE_APP_ID || '';
+
+const firebaseConfig = {
+  apiKey: firebaseAPIKey,
+  authDomain: firebaseAuthDomain,
+  projectId: firebaseProjectId,
+  storageBucket: firebaseStorageBucket,
+  messagingSenderId: firebaseMessagingSenderId,
+  appId: firebaseAppId
+};
+
+const app = initializeApp(firebaseConfig);
+const storage = getStorage();
+const genImagesRef = ref(storage, 'generatedImages');
+
+// Data URL string
+const storeImageData = function(imageObject){
+  const imageURL = imageObject.imageURL;
+  const objectName = uid();
+
+  const newRef = ref(genImagesRef, `${objectName}.webp`);
+
+  const metadata = {
+    contentType: 'image/webp',
+    customMetadata: {
+      originalPrompt: imageObject.originalPrompt,
+      dalleRevisedPrompt: imageObject.dalleRevisedPrompt,
+      gptRewrittenPrompt: imageObject.gptRewrittenPrompt,
+      systemPromptKey,
+      systemPrompt
+    }
+  };
+
+  console.log("Storing image");
+  return uploadString(newRef, imageURL, 'base64', metadata);
+}
 
 const delay = ms => new Promise(res => {
   console.log("Starting delay");
@@ -15,45 +67,55 @@ const delay = ms => new Promise(res => {
 
 const openai = new OpenAI();
 
-const agent = new Agent('Subject Diversifier', prompts.diversify8, /*req.query.prompt*/);
-agent.setupAssistant();
+const diversifierAgent = new Agent('Subject Diversifier', systemPrompt, /*req.query.prompt*/);
+diversifierAgent.setupAssistant();
 
-// const server = certKeyPath ? restify.createServer({...options}) : restify.createServer();
-// const server = certKeyPath ? express({...options}) : express();
+const keywordsAgent = new Agent('Keywords Generator', prompts.keywords);
+keywordsAgent.setupAssistant();
+
 const server = express();
 server.use(cors());
 server.use(express.json({limit: '1gb'}));
 
-// if (certKeyPath) https.createServer(options);
-// server.use(restify.plugins.queryParser());
+const describeImage = async (imageURL, prompt) => {
+  console.log("Making gpt-vision request");
+  console.log("Image URL: ", imageURL.slice(0, 10));
+  const response = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `${prompts.describeImage}\nDescription: ${prompt}` },
+            {
+              type: "image_url",
+              image_url: {
+                "url": imageURL
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1500
+  });
 
-// const cors = corsMiddleware({
-//   preflightMaxAge: 5, //Optional
-//   origins: ['*'],
-//   allowHeaders: ['Origin',  'Accept',  'Accept-Version',  'Content-Length', 'Content-Type',  'Date',  'X-Requested-With', 'X-Response-Time', 'Authorization'], 
-//   exposeHeaders: [],
-//   // allowMethods: ['OPTIONS', 'DELETE', 'POST']
-// })
- 
-// server.pre(cors.preflight)
-// server.use(cors.actual)
+  console.log("Vision response: ", response);
 
-// server.use(
-//   function crossOrigin(req, res, next) {
-//     res.header("Access-Control-Allow-Origin", "*");
-//     res.header("Access-Control-Allow-Headers", "Content-Type");
-//     res.header("Access-Control-Allow-Headers", "X-Requested-With");
-//     res.header("Access-Control-Allow-Methods", "OPTIONS, DELETE, POST, GET, PATCH, PUT");
-//     res.header('Access-Control-Allow-Headers', 'Origin, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-Response-Time, X-PINGOTHER, X-CSRF-Token,Authorization');
-//     return next();
-//   }
-// );
+  return response.choices[0].message.content;
+}
+
+const PROMPT_PREFIX = 'A digital illustration of ';
+const PROMPT_SUFFIX = ' Full length image. On a white background. Appropriate for children.';
 
 const getImage = async (prompt, query) => {
   const size = query.wide ? '1792x1024' : '1024x1024';
   const p = `${query.promptPrefix || ''} ${prompt} ${query.promptSuffix || ''}`.trim();
   // console.log("Size: ", size);
   console.log('Prompt:', p, '\n');
+
+  const originalPrompt = query.originalPrompt || prompt;
+  let revisedPrompt = '';
+
   return openai.images.generate({
       model: "dall-e-3",
       prompt: `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${p}`,
@@ -63,22 +125,39 @@ const getImage = async (prompt, query) => {
   })
   .then(resp => {
     console.log("Got generated image");
+
+    const b64JSON = resp.data[0].b64_json;
+    const imageURL = `data:image/webp;base64,${b64JSON}`
+    revisedPrompt = resp.data[0].revised_prompt;
+
     // return `data:image/webp;base64,${resp.data[0].b64_json}`;
-    return resp.data[0];
+    const imageObject = {
+      // imageURL: sampleImage.split(',')[1],
+      // dalleRevisedPrompt: 'test image',
+      
+      imageURL: b64JSON,
+      // webURL: resp.data[0].url,
+      originalPrompt,
+      dalleRevisedPrompt: revisedPrompt,
+      
+      gptRewrittenPrompt: query.originalPrompt ? prompt : ''
+    }
+    storeImageData(imageObject);
+    return { imageURL, revisedPrompt };
   })
   .catch(error => {
       console.log("Error generating image");
       if (error.code === 'content_policy_violation') {
         // Retry
         console.log('Content policy violation, returning invalid image. Broken Prompt:\n', p);
-        return {b64_json: '', revised_prompt: 'content policy violation'};
+        return {imageURL: '', error: 'content policy violation', revisedPrompt: (revisedPrompt || originalPrompt)};
       } else if (error.code === 'rate_limit_exceeded') {
         // Retry
         console.log('Rate Limit Exceeded, trying again.');
         return delay(30000).then(() => getImage(prompt, query));
       }
       console.log("Prompt: ", p, "\n Error: ", error, error.response);
-      return {b64_json: '', revised_prompt: 'invalid image'};
+      return {imageURL: '', error: 'invalid  image', revisedPrompt: (revisedPrompt || originalPrompt)};
   });
 };
 
@@ -102,39 +181,111 @@ server.get('/images', function(req, res, next) {
     const images = [];
     const dalleRevisedPrompts = [];
     imageResps.forEach(imageResp => {
-      images.push(`data:image/webp;base64,${imageResp.b64_json}`);
-      dalleRevisedPrompts.push(imageResp.revised_prompt);
+      images.push(imageResp.imageURL);
+      dalleRevisedPrompts.push(imageResp.revisedPrompt);
     })
     res.contentType = 'json';
-    res.send({images, dalleRevisedPrompts});
+    res.send({images, dalleRevisedPrompts /* , webURLs*/});
     return next();
   });
+});
+
+server.post('/image_variant', function(req, res, next){
+  console.log('Ping /image_variant');
+  
+  if (!req.body) {
+    console.log('No req body found');
+    res.end();
+    return next();
+  }
+  console.log("Got a POST /image_variant");
+
+  (async () => {
+    const imageURL = req.body.imageURL;
+    const prompt = req.body.prompt || '';
+    const wide = req.body.wide || false;
+    describeImage(imageURL, prompt)
+    .then(responseText => {
+      console.log("Response text: ", responseText);
+      return getImage(responseText, {wide, promptPrefix: PROMPT_PREFIX, promptSuffix: PROMPT_SUFFIX})
+        .then(imageResp => {
+          res.contentType = 'json';
+          res.send({
+            imageURL: imageResp.imageURL,
+            originalPrompt: responseText,
+            revisedPrompt: imageResp.revisedPrompt
+          });
+          return next();
+        })
+    })
+  })();
+});
+
+server.get('/keywords', function(req, res, next){
+  if (!req.query.prompt) {
+    console.log("Ping /keywords");
+    res.end();
+    return next();
+  }
+
+  console.log('GET /keywords');
+  console.log("Prompt: ", req.query.prompt);
+
+  (async () => {
+    const threadId = req.query.threadId || await keywordsAgent.initializeThread();
+    const runId = await keywordsAgent.newPrompt(threadId, req.query.prompt);
+
+    keywordsAgent.loopStep(threadId, runId)
+    .then((k, rejected) => {
+      if (rejected) {// Got an error, chatGPT did not give JSON, fail gracefully
+        res.contentType = 'json';
+        const responseObj = {
+          keywords: [],
+          threadId
+        };
+        res.send(responseObj);
+        return next();
+      }
+
+      res.contentType = 'json';
+      console.log("V: ", k);
+      const responseObj = {keywords: k.keywords, threadId};
+      
+      console.log("Sending response");
+
+      res.send(responseObj);
+      return next();
+    });
+
+  })();
+
 });
 
 server.get('/prompt_variants', function(req, res, next){
   if (!req.query.prompt) {
     console.log("Ping /prompt_variants");
+    console.log("Query: ", req.query);
     res.end();
     return next();
   }
 
   console.log("GET /prompt_variants");
 
-  // const agent = new Agent('Subject Diversifier', prompts.diversify7, /*msgObj.subjects*/ req.query.prompt);
-  // const setup = agent.initialize();
   
   (async () => {
-    const threadId = req.query.threadId || await agent.initializeThread();
+    const threadId = req.query.threadId || await diversifierAgent.initializeThread();
 
-    const runId = await agent.newPrompt(threadId, req.query.prompt);
+    const p = `${req.query.promptPrefix || ''} ${req.query.prompt} ${req.query.promptSuffix || ''}`.trim();
+
+    const runId = await diversifierAgent.newPrompt(threadId, p);
     
-    agent.loopStep(threadId, runId)
+    diversifierAgent.loopStep(threadId, runId)
     .then((v, rejected) => {
 
       if (rejected) { // Got an error, chatGPT did not give JSON, fail gracefully
         res.contentType = 'json';
         const responseObj = {
-          prompts: [req.query.prompt, req.query.prompt, req.query.prompt, req.query.prompt],
+          prompts: [p,p,p,p],
           threadId
         };
         res.send(responseObj);
@@ -165,7 +316,6 @@ const removeBg = function (method, req, res, next) {
   console.log(`${method} /removebg`);
   
   (async () => {
-    // const image = JSON.parse(req.body).image;
     const image = req.body.image.split(',')[1];
     removeBackground(image).then(newImg => {
       res.contentType = 'json';
@@ -184,57 +334,6 @@ server.get('/', function(req, res, next) {
       res.end();
       return next();
     }
-
-    console.log("GET /");
-
-    const plainPromptImages = [];
-    const start = Date.now();
-    for (let i = 0; i < 4; i++) {
-      getImage(req.query.prompt, req.query)
-      .then(i => plainPromptImages.push(i));
-    }
-
-    (async () => {
-      const threadId = req.query.threadId || await agent.initializeThread();
-
-      const runId = await agent.newPrompt(threadId, req.query.prompt);
-    
-      try {
-        return agent.loopStep(threadId, runId)
-        .then(async (v) => {
-          const end = Date.now();
-          const timeElapsed = end - start;
-
-          const timeDelay = 60000 - timeElapsed;
-          console.log("Adding time delay of ", timeDelay);
-
-          await new Promise((r) => setTimeout(r, timeDelay));
-          return v;
-        })
-        .then(v => v.variants)
-        .then(imagePrompts => Promise.all(imagePrompts.map(async prompt => {
-            
-            return getImage(prompt, req.query);
-          }))
-          .then(images => {
-            console.log("Got images!");
-            res.contentType = 'json';
-            const responseObj = {prompts: imagePrompts, images, plainPromptImages, threadId};
-            // console.log("Response Obj: ", responseObj);
-
-            console.log("Sending response");
-
-            res.send(responseObj);
-            return next();
-          })
-          .catch(e => {
-            console.log("Got an error in the image gen process... ", e);
-          })
-        );
-      } catch (e) {
-        console.log("Got an error somewhere in the request handling process: ", e);
-      }
-    })();
 });
 
 const port = process.env.PORT || 8033;
