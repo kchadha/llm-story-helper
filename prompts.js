@@ -195,7 +195,7 @@ export default {
     keywords: `For the given prompt, generate a list of exactly 16 keywords for adding detail to the prompt. These details are for creating an image of the given subject. 
     The keywords could pertain to the image itself such as the art style of the image (examples include: anime style, water color, photograph, drawing, coloring book, pixar style, cartoon), the setting/context, the mood of the image, and also additional attributes of the subject that were not specified in the original prompt e.g. ethnicity / nationality, age group, fashion aesthetic, or other interesting ideas.
 
-    Do not include generic phrases like "ethnically diverse" or "multicultural". Instead try to choose specific details that would add something to the image. Only include keywords that are not already mentioned in the prompt.
+    Do not include generic phrases like "ethnically diverse" or "multicultural". Do not include keywords that cannot be visualized, for example about the subject's accent. Instead try to choose specific details that would add something visual to the image. Only include keywords that are not already mentioned in the prompt.
 
     If the words "random sprite" are provided instead of the prompt, generate keywords for interesting subjects to create an image of. These could be simple subjects like people, animals, or creatures. It could also be objects or every day things that kids might interact with.
     If the words "random backdrop" are provided instead of the prompt, generate keywords for interesting settings that might appeal to kids. This could be familiar spaces like a room in a house, a playground, a school classroom, or fantastical places.
