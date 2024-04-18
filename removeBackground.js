@@ -1,30 +1,32 @@
 /* eslint-disable require-jsdoc */
 import {AutoModel, AutoProcessor, env, RawImage} from '@xenova/transformers';
 import sharp from 'sharp';
+import dataURItoBlob from './dataURItoBlob.js';
 
-import sampleImages from './sampleImages.js';
+// import sampleImages from './sampleImages.js';
 
-const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
-    const byteCharacters = atob(b64Data);
-    const byteArrays = [];
+// const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
+//     const byteCharacters = atob(b64Data);
+//     const byteArrays = [];
   
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-      const slice = byteCharacters.slice(offset, offset + sliceSize);
+//     for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+//       const slice = byteCharacters.slice(offset, offset + sliceSize);
   
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
+//       const byteNumbers = new Array(slice.length);
+//       for (let i = 0; i < slice.length; i++) {
+//         byteNumbers[i] = slice.charCodeAt(i);
+//       }
   
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
+//       const byteArray = new Uint8Array(byteNumbers);
+//       byteArrays.push(byteArray);
+//     }
       
-    const blob = new Blob(byteArrays, {type: contentType});
-    return blob;
-};
+//     const blob = new Blob(byteArrays, {type: contentType});
+//     return blob;
+// };
 
-const rgbaArrayToBase64WebP = (rgbaArray, width, height) => {
+const rgbaArrayToBase64Image = (rgbaArray, width, height, contentType) => {
+    const format = contentType.split('/')[1]; // should be 'webp' or 'png'
     // Convert the RGBA array to a Buffer
     const buffer = Buffer.from(rgbaArray);
     
@@ -37,13 +39,13 @@ const rgbaArrayToBase64WebP = (rgbaArray, width, height) => {
         channels: 4 // RGBA has 4 channels
       }
     })
-    .toFormat('webp')
+    .toFormat(format)
     .toBuffer()
     .then(data => {
       // Convert to a Base64 string
       console.log('Converting to base64 string');
       const base64 = data.toString('base64');
-      const base64Image = `data:image/webp;base64,${base64}`;
+      const base64Image = `data:${contentType};base64,${base64}`;
       // console.log(base64Image);
       return base64Image;
     })
@@ -90,11 +92,18 @@ export default (async imageStr => {
     // Predict foreground of the given image
     const predict = async url => {
         // Read image
-        const b64Data = url = url.replace('data:image/webp;base64,', '');
-        const contentType = 'image/webp';
+        // const b64Data = url = url.replace('data:image/webp;base64,', '');
+        // const contentType = 'image/webp';
+
+        // const b64Data = atob(url.split(',')[1]);
+        // const contentType = dataURI.split(',')[0].split(':')[1].split(';')[0];
+        // console.log(b64Data);
+        // console.log(contentType);
         
         console.log("B64 to Blob");
-        const blob = b64toBlob(b64Data, contentType);
+        const blob = dataURItoBlob(url);
+
+        const contentType = blob.type;
         
         console.log("Image from Blob");
         const image = await RawImage.fromBlob(blob);
@@ -118,8 +127,8 @@ export default (async imageStr => {
             arr[i] = mask.data[((i+1)/4) - 1];
         }
 
-        console.log("RGBA Array to Base64 Webp");
-        return rgbaArrayToBase64WebP(arr, image.width, image.height);
+        console.log("RGBA Array to Base64 Image");
+        return rgbaArrayToBase64Image(arr, image.width, image.height, contentType);
     };
 
     console.log("Predicting image");

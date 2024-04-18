@@ -316,7 +316,7 @@ const removeBg = function (method, req, res, next) {
   console.log(`${method} /removebg`);
   
   (async () => {
-    const image = req.body.image.split(',')[1];
+    const image = req.body.image;
     removeBackground(image).then(newImg => {
       res.contentType = 'json';
       res.send({image: newImg});
