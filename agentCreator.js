@@ -35,7 +35,7 @@ class Agent {
         this.assistant = await openai.beta.assistants.create({
             name: this.name,
             instructions: this.instructions,
-            model: 'gpt-4'
+            model: 'gpt-4-turbo'
         });
     }
 
@@ -125,7 +125,7 @@ class Agent {
                         }));
                 }
                 
-                return delay(5000).then(() => this.loopStep(threadId, runId));
+                return delay(2000).then(() => this.loopStep(threadId, runId));
             });
     }
 
