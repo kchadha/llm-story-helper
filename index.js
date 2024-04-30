@@ -106,10 +106,11 @@ const describeImage = async (imageURL, prompt) => {
 
 const PROMPT_PREFIX = 'A digital illustration of ';
 const PROMPT_SUFFIX = ' Full length image. On a white background. Appropriate for children.';
+const AS_IS_PREFIX = 'I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS:';
 
 const getImage = async (prompt, query) => {
   const size = query.wide ? '1792x1024' : '1024x1024';
-  const p = `${query.promptPrefix || ''} ${prompt} ${query.promptSuffix || ''}`.trim();
+  const p = `${query.allowDalleMods ? '' : AS_IS_PREFIX} ${query.promptPrefix || ''} ${prompt} ${query.promptSuffix || ''}`.trim();
   // console.log("Size: ", size);
   console.log('Prompt:', p, '\n');
 
@@ -118,7 +119,7 @@ const getImage = async (prompt, query) => {
 
   return openai.images.generate({
       model: "dall-e-3",
-      prompt: `I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS: ${p}`,
+      prompt: p,
       n: 1,
       size: size,
       response_format: 'b64_json'
