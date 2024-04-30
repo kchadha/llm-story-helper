@@ -207,13 +207,13 @@ server.post('/image_variant', function(req, res, next){
     const wide = req.body.wide || false;
     describeImage(imageURL, prompt)
     .then(responseText => {
-      console.log("Response text: ", responseText);
+      console.log("GPT-Vision Description: ", responseText);
       return getImage(responseText, {wide, promptPrefix: PROMPT_PREFIX, promptSuffix: PROMPT_SUFFIX})
         .then(imageResp => {
           res.contentType = 'json';
           res.send({
             imageURL: imageResp.imageURL,
-            originalPrompt: responseText,
+            originalPrompt: prompt,
             revisedPrompt: imageResp.revisedPrompt
           });
           return next();
