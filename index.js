@@ -144,21 +144,20 @@ const getImage = async (prompt, query) => {
       gptRewrittenPrompt: query.originalPrompt ? prompt : ''
     }
     storeImageData(imageObject);
-    return { imageURL, revisedPrompt };
+    return { imageURL, originalPrompt, revisedPrompt };
   })
   .catch(error => {
       console.log("Error generating image");
       if (error.code === 'content_policy_violation') {
-        // Retry
         console.log('Content policy violation, returning invalid image. Broken Prompt:\n', p);
-        return {imageURL: '', error: 'content policy violation', revisedPrompt: (revisedPrompt || originalPrompt)};
+        return {imageURL: '', error, errorMsg: 'content policy violation', originalPrompt, revisedPrompt: (revisedPrompt || originalPrompt)};
       } else if (error.code === 'rate_limit_exceeded') {
         // Retry
         console.log('Rate Limit Exceeded, trying again.');
         return delay(30000).then(() => getImage(prompt, query));
       }
-      console.log("Prompt: ", p, "\n Error: ", error, error.response);
-      return {imageURL: '', error: 'invalid  image', revisedPrompt: (revisedPrompt || originalPrompt)};
+      console.log("Error with prompt: ", p, "\nError: ", error, error.response);
+      return {imageURL: '', error, errorMsg: 'invalid  image', originalPrompt, revisedPrompt: (revisedPrompt || originalPrompt)};
   });
 };
 
@@ -179,14 +178,8 @@ server.get('/images', function(req, res, next) {
   }
 
   Promise.all(imagePromises).then(imageResps => {
-    const images = [];
-    const dalleRevisedPrompts = [];
-    imageResps.forEach(imageResp => {
-      images.push(imageResp.imageURL);
-      dalleRevisedPrompts.push(imageResp.revisedPrompt);
-    })
     res.contentType = 'json';
-    res.send({images, dalleRevisedPrompts /* , webURLs*/});
+    res.send({images: imageResps});
     return next();
   });
 });
