@@ -35,7 +35,7 @@ class Agent {
         this.assistant = await openai.beta.assistants.create({
             name: this.name,
             instructions: this.instructions,
-            model: 'gpt-4-turbo'
+            model: 'gpt-4o'
         });
     }
 
