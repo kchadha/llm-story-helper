@@ -136,7 +136,7 @@ export default {
     Generate these variants as structured JSON data of a single key: 'variants' and the value of that key being an array of these string variants. DO NOT number the list of variants. Make sure all keys in the JSON object are lower case. Don't include any other text besides the full json object.`,
 
     diversify10: `For the given description of a subject, generate a list of exactly 4 different 
-    variants for that subject. Keep all the attributes from the original description the same but choose 2 modifiers to add to make the original description slightly more detailed. Some modifiers to vary could be ethnicity, nationality, body type, disability markers, hair color, hair style,
+    variants for that subject. Keep all the attributes from the original description the same but choose 2 modifiers to add to make the original description slightly more detailed. Some modifiers to vary could be ethnicity, nationality, body type, gender, gender expression, disability markers, hair color, hair style,
     type of clothing / fashion aesthetic, age, personality. 
 
     These new description variants should be just one short sentence.
@@ -191,11 +191,27 @@ export default {
     describeImage:
     `Given this image and corresponding description, create a new detailed but concise description of this image so that the description can be used to create a similar image. Describe the visual style of the image, the contents, the details about the subject including ethnicity and gender (if provided).
     Output the description starting with "A [visual style] of" for example "A digital illustration of"`,
+    
+    describeImage2:
+    `Given this image and corresponding description, create a new detailed but concise description of the exact art style and contents of this image. Create a description that can be used to re-create the image. In generating the new description, prioritize the details from the user's original description of the image, especially the contents, the details about the subject including ethnicity and gender (if provided).
+    Output the description starting with "A [visual style] of" for example "A digital illustration of"`,
+
 
     keywords: `For the given prompt, generate a list of exactly 16 keywords for adding detail to the prompt. These details are for creating an image of the given subject. 
     The keywords could pertain to the image itself such as the art style of the image (examples include: anime style, water color, photograph, drawing, coloring book, pixar style, cartoon), the setting/context, the mood of the image, and also additional attributes of the subject that were not specified in the original prompt e.g. ethnicity / nationality, age group, fashion aesthetic, or other interesting ideas.
 
     Do not include generic phrases like "ethnically diverse" or "multicultural". Do not include keywords that cannot be visualized, for example about the subject's accent. Instead try to choose specific details that would add something visual to the image. Only include keywords that are not already mentioned in the prompt.
+
+    If the words "random sprite" are provided instead of the prompt, generate keywords for interesting subjects to create an image of. These could be simple subjects like people, animals, or creatures. It could also be objects or every day things that kids might interact with.
+    If the words "random backdrop" are provided instead of the prompt, generate keywords for interesting settings that might appeal to kids. This could be familiar spaces like a room in a house, a playground, a school classroom, or fantastical places.
+
+    Generate these keywords as structured JSON data of a single key: 'keywords' and the value of that key being an array of these string keywords. DO NOT number the list of keywords. Make sure all keys in the JSON object are lower case. Don't include any other text besides the full json object. Do not number the keywords.
+    `,
+    
+    keywords2: `For the given prompt, generate a list of exactly 16 keywords for adding detail to the prompt. These details are for creating an image of the given subject. 
+    The keywords could pertain to the image itself such as the art style of the image (examples include: anime style, water color, photograph, drawing, coloring book, pixar style, cartoon), the setting/context, the mood of the image, and also additional attributes of the subject that were not specified in the original prompt e.g. ethnicity / nationality, age group, fashion aesthetic, or other interesting ideas.
+
+    The keywords should NOT be generic phrases like "ethnically diverse" or "multicultural". DO NOT include keywords that cannot be visualized, for example about the subject's accent. Instead try to choose specific details that would add something visual to the image for example a description of a color palette, visual mood, additional subjects and elements. Only include keywords that are not already mentioned in the prompt.
 
     If the words "random sprite" are provided instead of the prompt, generate keywords for interesting subjects to create an image of. These could be simple subjects like people, animals, or creatures. It could also be objects or every day things that kids might interact with.
     If the words "random backdrop" are provided instead of the prompt, generate keywords for interesting settings that might appeal to kids. This could be familiar spaces like a room in a house, a playground, a school classroom, or fantastical places.
