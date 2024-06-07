@@ -70,7 +70,7 @@ const openai = new OpenAI();
 const diversifierAgent = new Agent('Subject Diversifier', systemPrompt, /*req.query.prompt*/);
 diversifierAgent.setupAssistant();
 
-const keywordsAgent = new Agent('Keywords Generator', prompts.keywords);
+const keywordsAgent = new Agent('Keywords Generator', prompts.keywords2);
 keywordsAgent.setupAssistant();
 
 const server = express();
@@ -81,12 +81,12 @@ const describeImage = async (imageURL, prompt) => {
   console.log("Making gpt-vision request");
   console.log("Image URL: ", imageURL.slice(0, 10));
   const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: `${prompts.describeImage}\nDescription: ${prompt}` },
+            { type: "text", text: `${prompts.describeImage2}\nDescription: ${prompt}` },
             {
               type: "image_url",
               image_url: {
@@ -105,7 +105,7 @@ const describeImage = async (imageURL, prompt) => {
 }
 
 const PROMPT_PREFIX = 'A digital illustration of ';
-const PROMPT_SUFFIX = ' Full length image. On a white background. Appropriate for children.';
+const PROMPT_SUFFIX = ' Full length image. On a white background.';
 const AS_IS_PREFIX = 'I NEED to test how the tool works with extremely simple prompts. DO NOT add any detail, just use it AS-IS:';
 
 const getImage = async (prompt, query) => {
@@ -230,8 +230,9 @@ server.get('/keywords', function(req, res, next){
     const runId = await keywordsAgent.newPrompt(threadId, req.query.prompt);
 
     keywordsAgent.loopStep(threadId, runId)
-    .then((k, rejected) => {
-      if (rejected) {// Got an error, chatGPT did not give JSON, fail gracefully
+    .then(k => {
+      if (!k) {// Got an error, chatGPT did not give JSON, fail gracefully
+        console.log("Got an error parsing the json, failing gracefully");
         res.contentType = 'json';
         const responseObj = {
           keywords: [],
@@ -242,7 +243,7 @@ server.get('/keywords', function(req, res, next){
       }
 
       res.contentType = 'json';
-      console.log("V: ", k);
+      console.log("K: ", k);
       const responseObj = {keywords: k.keywords, threadId};
       
       console.log("Sending response");
@@ -274,9 +275,10 @@ server.get('/prompt_variants', function(req, res, next){
     const runId = await diversifierAgent.newPrompt(threadId, p);
     
     diversifierAgent.loopStep(threadId, runId)
-    .then((v, rejected) => {
+    .then(v => {
 
-      if (rejected) { // Got an error, chatGPT did not give JSON, fail gracefully
+      if (!v) { // Got an error, chatGPT did not give JSON, fail gracefully
+        console.log("Got an error parsing json. Failing gracefully");
         res.contentType = 'json';
         const responseObj = {
           prompts: [p,p,p,p],

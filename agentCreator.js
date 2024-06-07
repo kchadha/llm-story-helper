@@ -115,12 +115,14 @@ class Agent {
                     console.log('Completed');
                     return Promise.resolve(openai.beta.threads.messages.list(threadId)
                         .then(messages => {
-                            const message = messages.data[0].content[0].text.value;
+                            let message = messages.data[0].content[0].text.value;
+                            message = message.replace('```json', '').replace('```', '').trim();
                             try {
                                 return Promise.resolve(JSON.parse(message));
                             } catch (e) {
                                 console.log("JSON.parse failed, here's the message: ", message);
-                                return Promise.reject(`JSON.parse failed, here's the message: ${e}`);
+                                return Promise.resolve(null);
+                                // return Promise.reject(`JSON.parse failed, here's the message: ${e}`);
                             }
                         }));
                 }
