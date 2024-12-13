@@ -11,6 +11,9 @@ import { initializeApp } from "firebase/app";
 import { getDownloadURL, getStorage, ref, updateMetadata, uploadString } from "firebase/storage";
 import uid from './uid.js';
 
+import Anthropic from '@anthropic-ai/sdk';
+const anthropic = new Anthropic();
+
 // import sampleImages from './sampleImages.js';
 // const sampleImage = sampleImages[0];
 
@@ -331,6 +334,70 @@ server.get('/', function(req, res, next) {
       return next();
     }
 });
+
+const logFile = fs.createWriteStream(`./logs/codegen-${new Date().toISOString()}.log`, { flags: 'a' });
+
+function log(message) {
+  const timestamp = new Date().toISOString();
+  logFile.write(`${timestamp}, ${message}\n`);
+}
+
+async function askAnthropic (body) {
+  console.log("Sending request to anthropic");
+  return await anthropic.messages.create({
+    model: "claude-3-5-sonnet-20240620",
+    max_tokens: 4096,
+    system: body.systemPrompt || "",
+    messages: body.messages,
+  });
+};
+
+server.post('/codegen', (req, res, next) => {
+  log("Received post to codegen ");
+  if (!req.body) {
+    console.log('No req body found');
+    res.end();
+    return next();
+  }
+  
+  const body = req.body;
+
+  console.log("User Request: ", body.messages);
+  log(`User Request: ${JSON.stringify(body.messages)}`);
+
+  try {
+    return askAnthropic(body)
+    .then(anthropicResponse => {
+      console.log("Received Response: ");
+      console.log(anthropicResponse.content[0].text);
+      log(`AI Response: ${anthropicResponse.content[0].text}`);
+
+      res.contentType = 'json';
+      res.send(anthropicResponse);
+      return next();
+    })
+    .catch(error => {
+      console.log("Encountered error response from Antrhopic");
+      console.log(error.message);
+
+      return delay(5000).then(() => askAnthropic(body))
+      .catch(error => {
+        console.log("Encountered error after retrying");
+        console.log(error.message);
+
+        console.log("Discarding request");
+        res.end();
+        return next();
+      });
+    });
+  } catch (error) {
+    console.log("Server Error occurred; Canceling Request");
+    console.log(error);
+    res.end();
+    return next;
+  }
+});
+
 
 const port = process.env.PORT || 8033;
 

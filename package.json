@@ -18,7 +18,8 @@
     "cors": "2.8.5",
     "@xenova/transformers": "^2.15.0",
     "sharp": "^0.33.2",
-    "firebase": "10.9.0"
+    "firebase": "10.9.0",
+    "@anthropic-ai/sdk": "0.32.1"
   },
   "type": "module"
 }
